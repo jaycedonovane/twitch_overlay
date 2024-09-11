@@ -1,0 +1,217 @@
+import tkinter as tk
+import ctypes
+import win32con
+import win32gui
+from tkinter import font
+
+def draw_rectangles(canvas, canvas_width, canvas_height):
+    canvas.delete("all")
+    color1 = "#c15a19"
+    color2 = "#96260b"
+    color3 = "#6a0000"
+    rect_width = 14
+    rect_height = 5
+    border_width = 2
+
+    num_columns = canvas_width // (rect_width + 4 * border_width)
+    num_rows = canvas_height // (rect_height + 4 * border_width)
+
+    for i in range(num_columns):
+        for j in range(num_rows):
+            x = i * (rect_width + 4 * border_width)
+            y = j * (rect_height + 4 * border_width)
+
+            canvas.create_rectangle(x - border_width * 2, y - border_width * 2, 
+                                     x + rect_width + border_width * 2, y + rect_height + border_width * 2, 
+                                     fill=color3, outline="")
+            canvas.create_rectangle(x - border_width, y - border_width, 
+                                     x + rect_width + border_width, y + rect_height + border_width, 
+                                     fill=color2, outline="")
+            canvas.create_rectangle(x, y, x + rect_width, y + rect_height, fill=color1, outline="")
+
+def center_text(canvas):
+    global text_id, text_x, text_width
+    text_color = "#f4b411"
+    text = " Tcg vs Ocg Paris        youtube"
+    size = 50
+
+    # Obtenir les polices disponibles sur le système
+    available_fonts = font.families()
+    if "Christmas Sweater" in available_fonts:
+        custom_font = font.Font(family="Christmas Sweater", size=size)
+    else:
+        custom_font = font.Font(family="Arial", size=size)
+    
+    # Dessiner le texte défilant
+    text_id = canvas.create_text(1000, 75, text=text, font=custom_font, fill=text_color, anchor="w")
+
+    # Calculer la largeur du texte après l'avoir dessiné
+    text_bbox = canvas.bbox(text_id)
+    text_width = text_bbox[2] - text_bbox[0]
+
+    # Ajouter des textes supplémentaires en Garamond gras
+    garamond_font = font.Font(family="Garamond", size=24, weight="bold")
+    text_height = garamond_font.metrics("linespace")  # hauteur de la ligne en Garamond
+
+    # Alignement du texte verticalement
+    canvas.create_text(10, 30, text="master league", font=garamond_font, fill="gray", anchor="w")
+    canvas.create_text(10, 30 + text_height, text="Rescue-Ace", font=garamond_font, fill="gray", anchor="w") #"Nom du Deck"
+    canvas.create_text(10, 30 + 2 * text_height, text="Top100 YCS Richmond 2023 (exositer-dinomorphia)", font=garamond_font, fill="gray", anchor="w")
+
+def draw_info_rectangle(canvas):
+    rect_x, rect_y = 20, 30
+    rect_width, rect_height = 200, 250
+    border_radius = 20
+
+    # Dessiner le rectangle avec des coins arrondis
+    canvas.create_oval(rect_x, rect_y, rect_x + 2 * border_radius, rect_y + 2 * border_radius, fill="grey", outline="grey")
+    canvas.create_oval(rect_x + rect_width - 2 * border_radius, rect_y, rect_x + rect_width, rect_y + 2 * border_radius, fill="grey", outline="grey")
+    canvas.create_oval(rect_x, rect_y + rect_height - 2 * border_radius, rect_x + 2 * border_radius, rect_y + rect_height, fill="grey", outline="grey")
+    canvas.create_oval(rect_x + rect_width - 2 * border_radius, rect_y + rect_height - 2 * border_radius, rect_x + rect_width, rect_y + rect_height, fill="grey", outline="grey")
+    canvas.create_rectangle(rect_x + border_radius, rect_y, rect_x + rect_width - border_radius, rect_y + rect_height, fill="black", outline="grey", width=2)
+    canvas.create_rectangle(rect_x, rect_y + border_radius, rect_x + rect_width, rect_y + rect_height - border_radius, fill="black", outline="grey", width=2)
+
+    text_font = font.Font(family="Arial", size=12, weight="bold")
+    text = "Subscribe change"
+
+    max_width = 200 - 30 * 2  # Largeur du rectangle moins les marges
+
+    # Ajouter le texte avec des retours à la ligne automatiques si nécessaire
+    wrapped_text = wrap_text(text, max_width, text_font)
+    for i, line in enumerate(wrapped_text):
+        canvas.create_text(rect_x + 10, rect_y + 40 + i * 20, text=line, font=text_font, fill="yellow", anchor="nw")
+    
+    text_items = [
+        "Unchained",
+        "Drytron",
+        "Orcust",
+        "Fireking Kozmo",
+        "Pure Shaddoll",
+        "Zefra"
+    ]
+    
+    for i, text in enumerate(text_items):
+        canvas.create_text(rect_x + 10, rect_y + 50 + len(wrapped_text) * 20 + i * 20, text=f"⚈ {text}", font=text_font, fill="gray", anchor="nw")
+
+def wrap_text(text, max_width, font):
+    words = text.split()
+    lines = []
+    current_line = ""
+    
+    for word in words:
+        test_line = f"{current_line} {word}".strip()
+        text_width = font.measure(test_line)
+        
+        if text_width <= max_width:
+            current_line = test_line
+        else:
+            if current_line:
+                lines.append(current_line)
+            current_line = word
+    
+    if current_line:
+        lines.append(current_line)
+    
+    return lines
+
+def animate_text():
+    global text_id, text_x, text_width
+    canvas_width = canvas.winfo_width()
+    canvas_coords = canvas.coords(text_id)
+    current_x = canvas_coords[0]
+
+    if current_x + text_width < 0:
+        canvas.coords(text_id, canvas_width, 75)
+    
+    canvas.move(text_id, -2, 0)
+
+    root.after(20, animate_text)
+
+def create_info_window():
+    global info_root  
+    info_root = tk.Toplevel()
+    info_root.overrideredirect(True) 
+    info_root.attributes('-topmost', True)
+    info_root.geometry("250x300+0+0")  # Positionner la fenêtre à gauche de l'écran
+    info_root.configure(bg='white')
+    info_root.wm_attributes('-transparentcolor', 'white')
+
+    info_root.bind("<Button-1>", start_move_info)
+    info_root.bind("<ButtonRelease-1>", stop_move_info)
+    info_root.bind("<B1-Motion>", on_motion_info)
+
+    info_canvas = tk.Canvas(info_root, width=250, height=300, bg="white", highlightthickness=0)
+    info_canvas.pack(fill=tk.BOTH, expand=True)
+
+    draw_info_rectangle(info_canvas)
+    return info_root
+
+def start_move_info(event):
+    info_root.x = event.x
+    info_root.y = event.y
+
+def stop_move_info(event):
+    info_root.x = None
+    info_root.y = None
+
+def on_motion_info(event):
+    x = info_root.winfo_pointerx() - info_root.x
+    y = info_root.winfo_pointery() - info_root.y
+    info_root.geometry(f"+{x}+{y}")
+
+def start_move(event):
+    root.x = event.x
+    root.y = event.y
+
+def stop_move(event):
+    root.x = None
+    root.y = None
+
+def on_motion(event):
+    x = root.winfo_pointerx() - root.x
+    y = root.winfo_pointery() - root.y
+    root.geometry(f"+{x}+{y}")
+
+def close_window(event):
+    root.destroy()
+
+root = tk.Tk()
+root.overrideredirect(True)
+root.attributes('-topmost', True)
+root.geometry("1000x150+100+100")
+
+canvas = tk.Canvas(root, width=1000, height=150, bg="white", highlightthickness=0)
+canvas.pack(fill=tk.BOTH, expand=True)
+
+root.wm_attributes("-transparentcolor", "white")
+
+draw_rectangles(canvas, 1000, 150)
+center_text(canvas)
+
+def get_window_handle():
+    root.update_idletasks()
+    hwnd = ctypes.windll.user32.FindWindowW(None, root.wm_title())
+    return hwnd
+
+def set_always_on_top(hwnd):
+    win32gui.SetWindowLong(hwnd, win32con.GWL_EXSTYLE, 
+                           win32gui.GetWindowLong(hwnd, win32con.GWL_EXSTYLE) | win32con.WS_EX_TOOLWINDOW)
+    win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 300, 300, 
+                          win32con.SWP_NOMOVE | win32con.SWP_NOSIZE | win32con.SWP_SHOWWINDOW)
+
+def keep_window_on_top():
+    hwnd = get_window_handle()
+    if hwnd:
+        set_always_on_top(hwnd)
+    root.after(500, keep_window_on_top)
+
+create_info_window()
+
+canvas.bind("<Button-1>", start_move)
+canvas.bind("<ButtonRelease-1>", stop_move)
+canvas.bind("<B1-Motion>", on_motion)
+canvas.bind("<Double-Button-1>", close_window)
+
+keep_window_on_top()
+animate_text()
+root.mainloop()
